@@ -1,0 +1,5 @@
+#!/bin/bash
+
+echo https://bugzilla.mozilla.org/show_bug.cgi?id=$1
+echo
+curl -s https://bugzilla.mozilla.org/rest/bug/$1?include_fields=summary,status,resolution | jq '.bugs[0]'
