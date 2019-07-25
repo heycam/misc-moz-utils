@@ -1,0 +1,69 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+my $search = shift;
+my $path = shift;
+
+unless (defined $search) {
+  die <<EOF
+$0: usage: $0 REGEX [PATH]
+
+Outputs the disassembly of functions whose signature match a regular
+expression.
+
+REGEX
+  A Perl regular expression used to search for functions in the specified
+  object file.
+
+PATH
+  Path to an object file; if run from a topsrcdir, defaults to the libxul.so
+  in the objdir.
+EOF
+}
+
+if (defined $path) {
+  unless (-f $path) {
+    die "$0: path '$path' must point to libxul.so\n";
+  }
+} else {
+  if (-x "mach") {
+    my $objdir = `./mach python -c "import buildconfig; print buildconfig.topobjdir"`;
+    chomp $objdir;
+    if (-d $objdir) {
+      if (-f "$objdir/dist/bin/libxul.so") {
+        $path = "$objdir/dist/bin/libxul.so";
+      } else {
+        die "$0: could not find libxul.so under objdir '$objdir'\n";
+      }
+    } else {
+      die "$0: could not determine objdir; you must specify libxul.so path\n";
+    }
+  } else {
+    die "$0: either specify libxul.so path or run this from your topsrcdir\n";
+  }
+}
+
+my $any = 0;
+my $fh;
+open($fh, "objdump -tC $path |") or die "$0: could not run objdump";
+while (<$fh>) {
+  if (/^([0-9a-f]+)\s+\S+\s+\S+\s+\.text\S*\s+([0-9a-f]+)\s+(?:\.hidden )?(.*)/) {
+    my ($start, $stop, $name) = (hex $1, (hex $1) + (hex $2), $3);
+    if ($name =~ /$search/) {
+      print "\n" if $any;
+      my $cmd = sprintf("objdump -dC %s --start-address=0x%0x --stop-address=0x%0x", $path, $start, $stop);
+      my $fh2;
+      open($fh2, "$cmd |");
+      my $p = 0;
+      while (<$fh2>) {
+        $p = 1 if /^[0-9a-f]/;
+        $p = 0 if /^$/;
+        print if $p;
+      }
+      close $fh2;
+      $any = 1;
+    }
+  }
+}
+close $fh;
