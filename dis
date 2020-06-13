@@ -28,7 +28,7 @@ if (defined $path) {
   }
 } else {
   if (-x "mach") {
-    my $objdir = `./mach python -c "import buildconfig; print buildconfig.topobjdir"`;
+    my $objdir = `./mach python -c "import buildconfig; print(buildconfig.topobjdir)"`;
     chomp $objdir;
     if (-d $objdir) {
       if (-f "$objdir/dist/bin/libxul.so") {
